@@ -1,5 +1,6 @@
 package tv.own.owntv.di
 
+import kotlinx.coroutines.flow.first
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
@@ -11,9 +12,14 @@ import tv.own.owntv.features.downloads.DownloadsViewModel
 import tv.own.owntv.features.recordings.RecordingsViewModel
 import tv.own.owntv.features.epg.EpgViewModel
 import tv.own.owntv.core.content.SearchReader
+import tv.own.owntv.core.customize.CustomizationStore
+import tv.own.owntv.core.database.dao.ChannelDao
+import tv.own.owntv.core.database.dao.SourceDao
 import tv.own.owntv.core.home.HomeFeedReader
 import tv.own.owntv.core.live.GuideReader
 import tv.own.owntv.core.live.LiveEpgReader
+import tv.own.owntv.core.model.MediaType
+import tv.own.owntv.core.settings.SettingsRepository
 import tv.own.owntv.features.home.HomeViewModel
 import tv.own.owntv.features.live.LiveViewModel
 import tv.own.owntv.features.movies.MovieViewModel
@@ -33,6 +39,7 @@ import tv.own.owntv.features.setup.DisplaySizeViewModel
 import tv.own.owntv.features.setup.SetupViewModel
 import tv.own.owntv.features.shell.ShellViewModel
 import tv.own.owntv.features.subtitles.SubtitleSearchViewModel
+import tv.own.owntv.smart.SmartProviderCandidateService
 
 /**
  * Root Koin module. Each feature will contribute its own bindings as the app grows;
@@ -55,6 +62,34 @@ val appModule = module {
     singleOf(::GuideReader)
     singleOf(::SearchReader)
     singleOf(::HomeFeedReader)
+    // Smart Provider Engine, phase 3: the on-demand pass that remembers what the app-local analyzer
+    // (phase 1) found, in core's candidate table (phase 2). Spelled out rather than `singleOf(::...)`
+    // because three of its four dependencies are the single-method seams it was written with, and Koin
+    // cannot build a lambda from the graph. They are resolved once, here, and closed over — so nothing
+    // re-enters the container on a tune.
+    single {
+        val sourceDao = get<SourceDao>()
+        val channelDao = get<ChannelDao>()
+        val settings = get<SettingsRepository>()
+        val customizationStore = get<CustomizationStore>()
+        SmartProviderCandidateService(
+            smartProviderDao = get(),
+            // `SourceDao` declares 27 methods and `ChannelDao` 67; this pass calls one of each.
+            allSourceIds = { sourceDao.allSourceIds() },
+            channelsForSources = { sourceIds, limit -> channelDao.allForSources(sourceIds, limit) },
+            // The hidden keys of the active profile, spelled the way `CustomizeKeys.channel` spells
+            // them. No active profile (-1's sentinel) hides nothing — a profile-scoped customization
+            // read needs a profile to be scoped to.
+            hiddenItemKeys = {
+                val profileId = settings.activeProfileId.first()
+                if (profileId < 0) {
+                    emptySet()
+                } else {
+                    customizationStore.observe(profileId, MediaType.LIVE).first().hiddenItems.keys
+                }
+            },
+        )
+    }
     viewModelOf(::HomeViewModel)
     viewModelOf(::SetupViewModel)
     viewModelOf(::DisplaySizeViewModel)

@@ -632,6 +632,8 @@
 1	technical	app/src/main/java/tv/own/owntv/player/PlayerHudControls.kt	toolPadding
 1	technical	app/src/main/java/tv/own/owntv/player/RecordingBadge.kt	rec
 1	technical	app/src/main/java/tv/own/owntv/player/RecordingBadge.kt	recPulse
+1	technical	app/src/main/java/tv/own/owntv/smart/SmartProviderAnalyzer.kt	#$normName
+1	technical	app/src/main/java/tv/own/owntv/smart/SmartProviderAnalyzer.kt	$sourceId:${remoteId ?: "#$normName"}
 1	file-path	app/src/main/java/tv/own/owntv/ui/components/BackgroundImageChooserDialog.kt	background_${System.currentTimeMillis()}.$ext
 1	file-path	app/src/main/java/tv/own/owntv/ui/components/BackgroundImageChooserDialog.kt	png
 1	log	app/src/main/java/tv/own/owntv/ui/components/DayStepperDialog.kt	+
