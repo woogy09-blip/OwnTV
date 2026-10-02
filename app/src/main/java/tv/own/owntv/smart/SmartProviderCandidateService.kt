@@ -228,6 +228,14 @@ class SmartProviderCandidateService(
 
         /** The provider allows one session at a time, and it is in use elsewhere. */
         ONE_SESSION_PROVIDER(PlayerFailureReason.ONE_SESSION_PROVIDER),
+
+        /**
+         * The provider's own certificate could not be verified — expired, self-signed, or issued for
+         * another host. A fact about the provider rather than about this device: every profile sharing the
+         * playlist meets the same one, which is what makes it worth remembering against it (and why
+         * [PlayerErrors.classify] only claims it from the certificate text itself).
+         */
+        SSL(PlayerFailureReason.SSL),
     }
 
     companion object {

@@ -130,6 +130,12 @@ class LiveViewModel(
     private val epgRepository: tv.own.owntv.core.repository.EpgRepository,
     private val externalPlayerLauncher: tv.own.owntv.core.player.ExternalPlayerLauncher,
     private val recordings: tv.own.owntv.core.recording.RecordingManager,
+    /**
+     * Smart Provider (phase 4) — the cross-provider memory behind the failover seam handed to
+     * [tv.own.owntv.player.LiveTuneController]. Provided like every other collaborator; the adapter that
+     * answers the player's three questions is built below, because it needs this screen's own state.
+     */
+    private val smartProviderCandidates: tv.own.owntv.smart.SmartProviderCandidateService,
 ) : ViewModel() {
 
     // --- "Record what I'm watching" (Plan D, D3 mode b) -----------------------------------------
@@ -825,6 +831,24 @@ class LiveViewModel(
 
 
     /**
+     * Smart Provider (phase 4) — the failover seam the player asks when a channel's own playlist runs out
+     * of engines and formats: which other playlist may carry it, and what each playlist's turn was worth.
+     *
+     * The walk itself is the player's (one substitute at a time, one shared deadline, one honest give-up);
+     * this only answers those three questions, from the table the discovery pass fills. [isVisible] is the
+     * same judgement every other way into playback already makes — active profile, playlist Live section,
+     * hidden items and categories, adult groups — so a substitute can never surface a channel that Browse,
+     * search and History hide. Verdicts are written on [viewModelScope] because the hooks are not
+     * suspending: leaving Live TV may lose a stamp, which costs the next attempt ordering, never a picture.
+     */
+    private val providerFallback = tv.own.owntv.smart.SmartProviderFallback(
+        candidates = smartProviderCandidates,
+        channelByRemote = { sourceId, remoteId -> channelDao.findByRemote(sourceId, remoteId) },
+        isVisible = { channel -> isVisibleToActiveProfile(channel) },
+        scope = viewModelScope,
+    )
+
+    /**
      * Live routing, the fallback ladder, the ExoPlayer ⇄ mpv handovers, the Stalker reconnect link and
      * the preview pane's engine — core's, the same code the phone runs. What stays here is the
      * television's own: which channel is on screen, the zap list, history, catch-up and the HUD state.
@@ -843,6 +867,7 @@ class LiveViewModel(
             sourceLookup = { id -> sourceById[id] },
             // A handover re-opens the channel at its live edge: the rewind is over.
             backToLiveEdge = { clearTimeshift() },
+            providerFallback = providerFallback,
         ),
     )
 

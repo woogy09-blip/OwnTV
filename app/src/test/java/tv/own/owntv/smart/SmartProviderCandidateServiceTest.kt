@@ -368,7 +368,17 @@ class SmartProviderCandidateServiceTest {
         val storable = ProviderFailureReason.entries.map { it.player.name }.toSet()
 
         assertEquals(
-            setOf("HTTP_400", "HTTP_401", "HTTP_403", "HTTP_404", "HTTP_509", "ONE_SESSION_PROVIDER"),
+            setOf(
+                "HTTP_400",
+                "HTTP_401",
+                "HTTP_403",
+                "HTTP_404",
+                "HTTP_509",
+                "ONE_SESSION_PROVIDER",
+                // The provider's own certificate: a fact about the playlist's host, not about this
+                // device — every profile that shares the playlist meets the same one.
+                "SSL",
+            ),
             storable,
         )
         // The enum *is* the provider-relevance filter: there is no way to write a row that condemns a
