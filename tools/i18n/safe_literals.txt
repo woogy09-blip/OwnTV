@@ -634,6 +634,18 @@
 1	technical	app/src/main/java/tv/own/owntv/player/RecordingBadge.kt	recPulse
 1	technical	app/src/main/java/tv/own/owntv/smart/SmartProviderAnalyzer.kt	#$normName
 1	technical	app/src/main/java/tv/own/owntv/smart/SmartProviderAnalyzer.kt	$sourceId:${remoteId ?: "#$normName"}
+1	log	app/src/main/java/tv/own/owntv/smart/SmartProviderDiscoveryTrigger.kt	outcome=$outcome totalMs=${SystemClock.elapsedRealtime() - startedAt}
+1	log	app/src/main/java/tv/own/owntv/smart/SmartProviderDiscoveryTrigger.kt	remoteId=${anchor.remoteId} ms=${SystemClock.elapsedRealtime() - anchorStartedAt}
+1	log	app/src/main/java/tv/own/owntv/smart/SmartProviderDiscoveryTrigger.kt	settleMs=$settleMs quietMs=${startedAt - quietAt}
+1	log	app/src/main/java/tv/own/owntv/smart/SmartProviderDiscoveryTrigger.kt	smart-discovery anchor i=$done/${anchors.size} sourceId=${anchor.sourceId}
+1	log	app/src/main/java/tv/own/owntv/smart/SmartProviderDiscoveryTrigger.kt	smart-discovery end profile=$profileId selected=${anchors.size} done=$done
+1	log	app/src/main/java/tv/own/owntv/smart/SmartProviderDiscoveryTrigger.kt	smart-discovery failed error=${failed.javaClass.simpleName}
+1	log	app/src/main/java/tv/own/owntv/smart/SmartProviderDiscoveryTrigger.kt	smart-discovery skip reason=$beforeStart
+1	log	app/src/main/java/tv/own/owntv/smart/SmartProviderDiscoveryTrigger.kt	smart-discovery skip reason=no-anchors profile=$profileId sources=${sourceIds.size}
+1	log	app/src/main/java/tv/own/owntv/smart/SmartProviderDiscoveryTrigger.kt	smart-discovery skip reason=no-profile
+1	log	app/src/main/java/tv/own/owntv/smart/SmartProviderDiscoveryTrigger.kt	smart-discovery skip reason=no-sources profile=$profileId
+1	log	app/src/main/java/tv/own/owntv/smart/SmartProviderDiscoveryTrigger.kt	smart-discovery start profile=$profileId anchors=${anchors.size} sources=${sourceIds.size}
+1	log	app/src/main/java/tv/own/owntv/smart/SmartProviderDiscoveryTrigger.kt	smart-discovery witnessed empty=${change.empty} syncing=${syncActivity.value.keys}
 1	file-path	app/src/main/java/tv/own/owntv/ui/components/BackgroundImageChooserDialog.kt	background_${System.currentTimeMillis()}.$ext
 1	file-path	app/src/main/java/tv/own/owntv/ui/components/BackgroundImageChooserDialog.kt	png
 1	log	app/src/main/java/tv/own/owntv/ui/components/DayStepperDialog.kt	+

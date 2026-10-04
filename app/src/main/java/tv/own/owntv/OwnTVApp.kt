@@ -124,6 +124,11 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
             settings = GlobalContext.get().get(),
             archiveStore = GlobalContext.get().get(),
         )
+        // Smart Provider discovery: one app-scoped observer that runs a bounded candidate pass once the
+        // catalogue has gone quiet. Started here, and not from a screen, because the sync it waits for
+        // usually finishes while the user is somewhere else — or on no screen at all. The instance is a
+        // Koin singleton and `start` is idempotent, so nothing here is re-armed by a recreated Activity.
+        GlobalContext.get().get<tv.own.owntv.smart.SmartProviderDiscoveryTrigger>().start(appScope)
         // NOTE: cold start does ZERO heavy DB work. Index + ANALYZE maintenance is piggy-backed onto the
         // operation that actually changes the data — ImportFinalizer.finalize() for normal re-syncs, the
         // deferred content-index worker after a fresh import, the EpgRepository refresh after every EPG

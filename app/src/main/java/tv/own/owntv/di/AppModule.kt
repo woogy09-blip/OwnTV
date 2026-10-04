@@ -1,6 +1,7 @@
 package tv.own.owntv.di
 
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
@@ -14,12 +15,17 @@ import tv.own.owntv.features.epg.EpgViewModel
 import tv.own.owntv.core.content.SearchReader
 import tv.own.owntv.core.customize.CustomizationStore
 import tv.own.owntv.core.database.dao.ChannelDao
+import tv.own.owntv.core.database.dao.ProfileDao
 import tv.own.owntv.core.database.dao.SourceDao
+import tv.own.owntv.core.database.dao.resolveExistingProfileId
 import tv.own.owntv.core.home.HomeFeedReader
 import tv.own.owntv.core.live.GuideReader
 import tv.own.owntv.core.live.LiveEpgReader
+import tv.own.owntv.core.live.OpenStreamRegistry
+import tv.own.owntv.core.live.WatchSession
 import tv.own.owntv.core.model.MediaType
 import tv.own.owntv.core.settings.SettingsRepository
+import tv.own.owntv.core.sync.SyncActivityTracker
 import tv.own.owntv.features.home.HomeViewModel
 import tv.own.owntv.features.live.LiveViewModel
 import tv.own.owntv.features.movies.MovieViewModel
@@ -40,6 +46,7 @@ import tv.own.owntv.features.setup.SetupViewModel
 import tv.own.owntv.features.shell.ShellViewModel
 import tv.own.owntv.features.subtitles.SubtitleSearchViewModel
 import tv.own.owntv.smart.SmartProviderCandidateService
+import tv.own.owntv.smart.SmartProviderDiscoveryTrigger
 
 /**
  * Root Koin module. Each feature will contribute its own bindings as the app grows;
@@ -88,6 +95,43 @@ val appModule = module {
                     customizationStore.observe(profileId, MediaType.LIVE).first().hiddenItems.keys
                 }
             },
+        )
+    }
+    // Smart Provider Engine, the trigger: when the catalogue has gone quiet, walk the active profile's
+    // most recently watched channels and let phase 3 remember what each of them could also be watched
+    // on. Spelled out for the same reason as the service above — every dependency but the flow and the
+    // tracker is a single-method seam Koin cannot build from the graph. One instance, and its owner is
+    // the process: OwnTVApp starts it against appScope, so it outlives every screen and every ViewModel.
+    single {
+        val sourceDao = get<SourceDao>()
+        val channelDao = get<ChannelDao>()
+        val profileDao = get<ProfileDao>()
+        val settings = get<SettingsRepository>()
+        val syncActivity = get<SyncActivityTracker>()
+        val watchSession = get<WatchSession>()
+        val openStreams = get<OpenStreamRegistry>()
+        val candidates = get<SmartProviderCandidateService>()
+        SmartProviderDiscoveryTrigger(
+            // The map is already keyed by sourceId and already a singleton, so parallel source syncs
+            // collapse into one non-empty -> empty edge with no per-source state of our own.
+            syncActivity = syncActivity.active,
+            // The predicate `CatalogBackfillWorker.shouldYield` uses for "the user is watching": fullscreen
+            // playback, which never claims a connection, plus the claims Multiview and recordings take.
+            playbackActive = {
+                watchSession.watching.value.isNotEmpty() || openStreams.claims.value.isNotEmpty()
+            },
+            // -1 is "no profile chosen yet"; resolveExistingProfileId answers null for it, and null for a
+            // device with no profiles at all — which is exactly when there is no scope to run a pass in.
+            activeProfileId = { profileDao.resolveExistingProfileId(settings.activeProfileId.first()) },
+            sourceIdsForProfile = { profileId -> sourceDao.sourceIdsForProfile(profileId) },
+            // The source filter is inside the query, ahead of the LIMIT, and the order is watchedAt DESC —
+            // so the pass walks what this profile actually watched, most recent first.
+            recentlyWatchedAnchors = { profileId, sourceIds, limit ->
+                channelDao.recentlyWatchedWithTimestampFiltered(profileId, sourceIds, limit)
+                    .first()
+                    .map { it.channel }
+            },
+            discover = { anchor -> candidates.discover(anchor) },
         )
     }
     viewModelOf(::HomeViewModel)
